@@ -1,0 +1,1844 @@
+----
+C:\Users\Diana\quest-room-front-next.js\eslint.config.mjs
+----
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+import { FlatCompat } from "@eslint/eslintrc";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+});
+
+const eslintConfig = [
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
+];
+
+export default eslintConfig;
+
+----
+C:\Users\Diana\quest-room-front-next.js\next-env.d.ts
+----
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+/// <reference types="next/navigation-types/compat/navigation" />
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+
+----
+C:\Users\Diana\quest-room-front-next.js\next.config.ts
+----
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+};
+
+export default nextConfig;
+
+----
+C:\Users\Diana\quest-room-front-next.js\package.json
+----
+{
+  "name": "quest-room-front-next.js",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@chakra-ui/react": "^2.10.9",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@hookform/resolvers": "^5.2.0",
+    "@tanstack/react-query": "^5.85.3",
+    "framer-motion": "^6.5.1",
+    "next": "15.4.6",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-hook-form": "^7.61.1",
+    "zod": "^4.0.10"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.4.6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+
+----
+C:\Users\Diana\quest-room-front-next.js\postcss.config.mjs
+----
+/** @type {import('postcss-load-config').Config} */
+export default {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\app\api\AuthAPI.ts
+----
+"use client";
+
+import { useMutation } from "@tanstack/react-query";
+
+const API_URL = 'http://localhost:5000'
+
+export interface User {
+  id: number;
+  email: string;
+  name: string;
+  surname: string;
+  password: string;
+  phone: string;
+  role: "user" | "admin";
+}
+
+export interface RegisterDto {
+  email: string;
+  password: string;
+  name: string;
+  surname: string;
+  phone: string;
+  agree: boolean;
+}
+
+export interface LoginDto {
+  email: string;
+  password: string;
+}
+
+export const useRegister = () => {
+  return useMutation({
+    mutationFn: async (data: RegisterDto) => {
+      const response = await fetch(`${API_URL}/auth/sign-up`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const message = result?.message || "Ошибка при регистрации";
+        throw new Error(message);
+      }
+
+      return result;
+    },
+  });
+};
+
+export const useLogin = () => {
+  return useMutation({
+    mutationFn: async (data: LoginDto) => {
+      const response = await fetch(`${API_URL}/auth/sign-in`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const message = result?.message || "Ошибка при входе";
+        throw new Error(message);
+      }
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("token", result.token);
+        localStorage.setItem("userName", result.user.name);
+      }
+
+      return result;
+    },
+  });
+};
+
+export const useSendResetEmail = () => {
+  return useMutation({
+    mutationFn: async ({ email }: { email: string }) => {
+      const response = await fetch(`${API_URL}/auth/forgot-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const message = result?.message || "Ошибка при отправке письма";
+        throw new Error(message);
+      }
+
+      return result;
+    },
+  });
+};
+
+export const useResetPassword = () => {
+  return useMutation({
+    mutationFn: async ({
+      password,
+      token,
+    }: {
+      password: string;
+      token: string;
+    }) => {
+      const response = await fetch(`${API_URL}/auth/reset-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ newPassword: password, token }),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const message = result?.message || "Ошибка при сбросе пароля";
+        throw new Error(message);
+      }
+
+      return result;
+    },
+  });
+};
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\app\api\QuestAPI.ts
+----
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+
+const API_URL = 'http://localhost:5000'
+
+export interface Quest {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  duration: number;
+  players: string;
+  level: string;
+  image: string;
+}
+
+const fetchQuests = async (category: string): Promise<Quest[]> => {
+  const query =
+    category && category !== "все квесты"
+      ? `?search=${encodeURIComponent(category)}`
+      : "";
+  const response = await fetch(`${API_URL}/quests${query}`);
+
+  if (!response.ok) throw new Error("Не удалось загрузить квесты");
+
+  return response.json();
+};
+
+const fetchQuest = async (id: number): Promise<Quest> => {
+  const response = await fetch(`${API_URL}/quests/${id}`);
+
+  if (!response.ok) throw new Error("Не удалось загрузить квест");
+
+  return response.json();
+};
+
+export const useQuests = (category: string) => {
+  return useQuery<Quest[], Error>({
+    queryKey: ["quests", category],
+    queryFn: () => fetchQuests(category),
+  });
+};
+
+export const useQuest = (id: number) => {
+  return useQuery<Quest, Error>({
+    queryKey: ["quest", id],
+    queryFn: () => fetchQuest(id),
+    enabled: !!id,
+  });
+};
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\app\auth\refresh\page.tsx
+----
+import ResetPasswordPage from "@/app/auth/refresh/ResetPassword";
+
+interface PageProps {
+  searchParams: { token?: string };
+}
+
+export default function Page({ searchParams }: PageProps) {
+  return <ResetPasswordPage token={searchParams.token} />;
+}
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\app\auth\refresh\ResetPassword.tsx
+----
+"use client";
+
+import {
+  Box,
+  Button,
+  FormControl,
+  FormLabel,
+  Heading,
+  Input,
+  Text,
+} from "@chakra-ui/react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useSendResetEmail, useResetPassword } from "@/app/api/AuthAPI";
+
+const emailSchema = z.object({
+  email: z.string().email({ message: "Введите корректный email" }),
+});
+
+const passwordSchema = z
+  .object({
+    password: z.string().min(6, { message: "Минимум 6 символов" }),
+    confirmPassword: z.string().min(6),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Пароли не совпадают",
+    path: ["confirmPassword"],
+  });
+
+type EmailFormData = z.infer<typeof emailSchema>;
+type PasswordFormData = z.infer<typeof passwordSchema>;
+
+interface ResetPasswordProps {
+  token?: string;
+}
+
+const ResetPasswordPage : React.FC<ResetPasswordProps> = ({ token }) => {
+  const router = useRouter();
+
+  const emailForm = useForm<EmailFormData>({
+    resolver: zodResolver(emailSchema),
+  });
+
+  const passwordForm = useForm<PasswordFormData>({
+    resolver: zodResolver(passwordSchema),
+  });
+
+  const sendEmailMutation = useSendResetEmail();
+  const resetPasswordMutation = useResetPassword();
+
+  const onSubmit = (data: EmailFormData | PasswordFormData) => {
+    if (!token) {
+      const { email } = data as EmailFormData;
+      sendEmailMutation.mutate(
+        { email },
+        {
+          onSuccess: () => {
+            alert("Письмо отправлено. Проверьте почту.");
+          },
+          onError: () => {
+            alert("Произошла ошибка. Попробуйте позже.");
+          },
+        }
+      );
+    } else {
+      const { password } = data as PasswordFormData;
+      resetPasswordMutation.mutate(
+        { password, token: token as string },
+        {
+          onSuccess: () => {
+            alert("Пароль успешно обновлён");
+            router.push("/");
+          },
+          onError: () => {
+            alert("Ошибка при обновлении пароля");
+          },
+        }
+      );
+    }
+  };
+
+  return (
+    <Box
+      maxW="400px"
+      mx="auto"
+      mt="100px"
+      p="30px"
+      bg="#1F1D1D"
+      borderRadius="md"
+    >
+      <Heading mb="30px" color="white" fontSize="24px" textAlign="center">
+        {token ? "Введите новый пароль" : "Восстановление пароля"}
+      </Heading>
+
+      <form
+        onSubmit={
+          token
+            ? passwordForm.handleSubmit(onSubmit)
+            : emailForm.handleSubmit(onSubmit)
+        }
+      >
+        {!token ? (
+          <FormControl mb="20px">
+            <FormLabel color="white">Email</FormLabel>
+            <Input
+              {...emailForm.register("email")}
+              placeholder="Введите email"
+              bg="#2B2A2A"
+              color="white"
+              borderRadius="md"
+              border="1px solid #444"
+              _placeholder={{ color: "gray.400" }}
+            />
+            {emailForm.formState.errors.email && (
+              <Text color="red.400" fontSize="sm" mt="5px">
+                {emailForm.formState.errors.email.message}
+              </Text>
+            )}
+          </FormControl>
+        ) : (
+          <>
+            <FormControl mb="20px">
+              <FormLabel color="white">Новый пароль</FormLabel>
+              <Input
+                type="password"
+                {...passwordForm.register("password")}
+                placeholder="Новый пароль"
+                bg="#2B2A2A"
+                color="white"
+                borderRadius="md"
+                border="1px solid #444"
+                _placeholder={{ color: "gray.400" }}
+              />
+              {passwordForm.formState.errors.password && (
+                <Text color="red.400" fontSize="sm" mt="5px">
+                  {passwordForm.formState.errors.password.message}
+                </Text>
+              )}
+            </FormControl>
+
+            <FormControl mb="20px">
+              <FormLabel color="white">Повторите пароль</FormLabel>
+              <Input
+                type="password"
+                {...passwordForm.register("confirmPassword")}
+                placeholder="Повторите пароль"
+                bg="#2B2A2A"
+                color="white"
+                borderRadius="md"
+                border="1px solid #444"
+                _placeholder={{ color: "gray.400" }}
+              />
+              {passwordForm.formState.errors.confirmPassword && (
+                <Text color="red.400" fontSize="sm" mt="5px">
+                  {passwordForm.formState.errors.confirmPassword.message}
+                </Text>
+              )}
+            </FormControl>
+          </>
+        )}
+
+        <Button
+          type="submit"
+          bg="#F28A0F"
+          color="white"
+          width="100%"
+          mt="10px"
+          _hover={{ bg: "#e07d0d" }}
+        >
+          {token ? "Сбросить пароль" : "Отправить письмо"}
+        </Button>
+      </form>
+    </Box>
+  );
+};
+
+export default ResetPasswordPage;
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\app\contacts\page.tsx
+----
+import ContactPage from "@/pages/ContactPage/ContactPage";
+
+export default function Page() {
+  return <ContactPage />;
+}
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\app\globals.css
+----
+/* @import "tailwindcss/preflight";
+@import "tailwindcss/utilities"; */
+
+body {
+  min-height: 100vh;
+  background: linear-gradient(to right, #141414, #1F1D1D) !important;
+  color: white !important;
+}
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\app\layout.tsx
+----
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import { ChakraProvider, Box } from "@chakra-ui/react";
+import "./globals.css";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import QueryProvider from "./providers/QueryProviders";
+
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Create Next App",
+  description: "Generated by create next app",
+};
+
+export default function RootLayout({children,}: Readonly<{children: React.ReactNode;}>) {
+return (
+    <html lang="en">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <ChakraProvider>
+          <QueryProvider>
+          <Box display="flex" flexDirection="column" minH="100vh">
+            <Header />
+            <Box as="main" flex="1">
+              {children}
+            </Box>
+            <Footer />
+          </Box>
+          </QueryProvider>
+        </ChakraProvider>
+      </body>
+    </html>
+  );
+}
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\app\not-found.tsx
+----
+export default function NotFound() {
+  return <div>Страница не найдена</div>;
+}
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\app\page.tsx
+----
+import MainPage from "@/pages/MainPage/MainPage";
+
+export default function Page() {
+  return <MainPage />
+}
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\app\providers\QueryProviders.tsx
+----
+"use client";
+
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactNode, useState } from "react";
+
+export default function QueryProvider({ children }: { children: ReactNode }) {
+  const [client] = useState(() => new QueryClient());
+
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\app\quests\page.tsx
+----
+import QuestPage from "@/pages/QuestPage/QuestPage";
+
+export default function Quest({ params }: { params: { id: string } }) {
+  return <QuestPage questId={""} />;
+}
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\app\quests\[id]\page.tsx
+----
+import QuestPage from "@/pages/QuestPage/QuestPage";
+
+interface Props {
+  params: { id: string };
+}
+
+export default function Quest({ params }: Props) {
+  return <QuestPage questId={params.id} />;
+}
+----
+C:\Users\Diana\quest-room-front-next.js\src\components\Footer.tsx
+----
+"use client";
+
+import { Box } from "@chakra-ui/react";
+import Image from "next/image";
+
+const Footer = () => {
+  return (
+    <Box display="flex" alignItems="start" pl="20px" pb="20px" gap="5px">
+      <Image src="/skype.svg" alt="Skype" width={20} height={20} />
+      <Image src="/vk.svg" alt="VK" width={20} height={20} />
+    </Box>
+  );
+};
+
+export default Footer;
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\components\Header.tsx
+----
+"use client";
+
+import {
+  Box,
+  Flex,
+  List,
+  ListItem,
+  Text,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  HStack,
+} from "@chakra-ui/react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import LoginModal from "./LoginModal";
+import RegisterModal from "./RegisterModal";
+
+
+const Header = () => {
+  const router = useRouter();
+  const [modal, setModal] = useState<"login" | "register" | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const name = localStorage.getItem("userName");
+    if (name) setUserName(name);
+  }, []);
+
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("userName");
+    router.push("/");
+  };
+
+  const handleLoginSuccess = (name: string) => {
+    setUserName(name);
+    setModal(null);
+  };
+
+  const linkStyle = {
+    textDecoration: "none",
+    color: "#fff",
+  };
+
+  const activeStyle = {
+    color: "#F2890F",
+    fontWeight: "bold",
+  };
+
+  return (
+    <Flex
+      as="header"
+      align="center"
+      justify="space-between"
+      py={5}
+      px={7}
+      bg="transparent"
+    >
+
+      <Box>
+        <Image
+          src="/logo-header.png"
+          alt="Escape Room Logo"
+          width={20}
+          height={20}
+        />
+      </Box>
+
+
+      <HStack as={List} spacing={12} align="center">
+        <ListItem>
+          <Link href="/" style={linkStyle}>
+            КВЕСТЫ
+          </Link>
+        </ListItem>
+        <ListItem>
+          <Link href="" style={linkStyle}>
+            НОВИЧКАМ
+          </Link>
+        </ListItem>
+        <ListItem>
+          <Link href="" style={linkStyle}>
+            ОТЗЫВЫ
+          </Link>
+        </ListItem>
+        <ListItem>
+          <Link href="" style={linkStyle}>
+            АКЦИИ
+          </Link>
+        </ListItem>
+        <ListItem>
+          <Link href="/contacts" style={linkStyle}>
+            КОНТАКТЫ
+          </Link>
+        </ListItem>
+      </HStack>
+
+
+      <Flex w="134px" justify="flex-end" align="center" gap={2}>
+        {userName ? (
+          <>
+            <Menu>
+              <MenuButton>
+                <Image src="/person.svg" alt="Person svg" width={24} height={24} />
+              </MenuButton>
+              <MenuList bg="#141414" borderColor="#333">
+                <MenuItem bg="#141414" color="white" onClick={logout}>
+                  Выйти
+                </MenuItem>
+              </MenuList>
+            </Menu>
+            <Text color="white">{userName}</Text>
+          </>
+        ) : (
+          <Box
+            w="134px"
+            display="flex"
+            justifyContent="flex-end"
+            onClick={() => setModal("login")}
+            cursor="pointer"
+          >
+            <Image src="/person.svg" alt="Person svg" width={24} height={24} />
+          </Box>
+        )}
+      </Flex>
+
+      {modal === 'login' && (
+          <LoginModal
+          isOpen={true}
+          onClose={() => setModal(null)}
+          onSwitchToRegister={() => setModal('register')}
+          onLoginSuccess={handleLoginSuccess}
+          />
+        )}
+
+        {modal === 'register' && (
+          <RegisterModal
+          isOpen={true}
+          onClose={() => setModal(null)}
+          onSwitchToLogin={() => setModal('login')}
+          />
+        )}
+    </Flex>
+  );
+};
+
+export default Header;
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\components\LoginModal.tsx
+----
+"use client";
+
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, type SubmitHandler } from "react-hook-form";
+import {
+  Box,
+  Button,
+  FormControl,
+  FormLabel,
+  Input,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  ModalOverlay,
+  Text,
+} from "@chakra-ui/react";
+import { useLogin } from "@/app/api/AuthAPI"; 
+import { useRouter } from "next/navigation";
+
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSwitchToRegister: () => void;
+  onLoginSuccess: (name: string) => void;
+}
+
+const formSchema = z.object({
+  email: z.string().email({ message: "Введите корректный email" }),
+  password: z
+    .string()
+    .min(6, { message: "Пароль должен содержать минимум 6 символов" }),
+});
+
+type FormData = z.output<typeof formSchema>;
+
+const LoginModal = ({
+  isOpen,
+  onClose,
+  onSwitchToRegister,
+  onLoginSuccess,
+}: ModalProps) => {
+  const router = useRouter();
+  const loginMutation = useLogin();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setError,
+  } = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+  });
+
+  const onSubmit: SubmitHandler<FormData> = async (data) => {
+    try {
+      const response = await loginMutation.mutateAsync(data);
+
+      localStorage.setItem("token", response.access_token);
+      localStorage.setItem("userName", response.user.name);
+
+      onLoginSuccess(response.user.name);
+
+      alert("Вы успешно вошли!");
+      onClose();
+      router.push("/");
+    } catch (error: any) {
+      const message = error?.message || "Ошибка входа. Попробуйте ещё раз.";
+      if (message.toLowerCase().includes("email")) {
+        setError("email", { type: "server", message });
+      } else {
+        alert(message);
+      }
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} isCentered>
+      <ModalOverlay />
+      <ModalContent
+        bg="#1F1D1D"
+        w="480px"
+        h="auto"
+        borderRadius="none"
+        maxW="500px"
+        p="40px"
+        fontFamily="sans-serif"
+      >
+        <ModalHeader
+          p="0"
+          mb="30px"
+          fontWeight="800"
+          fontSize="28px"
+          textColor="#FFFFFF"
+        >
+          Вход
+        </ModalHeader>
+        <ModalCloseButton
+          top="40px"
+          right="20px"
+          color="#888"
+          _hover={{ color: "#000" }}
+        />
+
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <ModalBody p="0">
+            <FormControl mb="32px">
+              <FormLabel fontSize="15px" mb="10px" textColor="#FFFFFF">
+                Email
+              </FormLabel>
+              <Input
+                {...register("email")}
+                placeholder="Email"
+                borderRadius="0"
+                border="1px solid #ddd"
+                p="15px"
+                textColor="#FFFFFF"
+              />
+              {errors.email && (
+                <Text color="red.400" fontSize="sm" mt="5px">
+                  {errors.email.message}
+                </Text>
+              )}
+            </FormControl>
+
+            <FormControl mb="32px">
+              <FormLabel fontSize="15px" mb="10px" textColor="#FFFFFF">
+                Пароль
+              </FormLabel>
+              <Input
+                {...register("password")}
+                placeholder="Пароль"
+                type="password"
+                borderRadius="0"
+                border="1px solid #ddd"
+                p="15px"
+                textColor="#FFFFFF"
+              />
+              {errors.password && (
+                <Text color="red.400" fontSize="sm" mt="5px">
+                  {errors.password.message}
+                </Text>
+              )}
+            </FormControl>
+
+            <ModalFooter
+              p="0"
+              display="flex"
+              flexDirection="column"
+              justifyContent="center"
+              gap="12px"
+            >
+              <Text
+                fontSize="12px"
+                color="#F2890F"
+                textAlign="center"
+                cursor="pointer"
+                textDecoration="underline"
+                onClick={() => {
+                  onClose();
+                  router.push("/auth/refresh");
+                }}
+              >
+                Забыли пароль?
+              </Text>
+
+              <Button
+                type="submit"
+                bgColor="#F28A0F"
+                color="white"
+                _hover={{ bg: "#e07d0d" }}
+                maxW="219px"
+                w="100%"
+                fontSize="12px"
+                fontWeight="600"
+                textTransform="uppercase"
+                borderRadius="65px"
+                border="none"
+              >
+                Войти
+              </Button>
+
+              <Text
+                fontSize="12px"
+                color="#E5E5E5"
+                textAlign="center"
+                cursor="pointer"
+                onClick={() => {
+                  onClose();
+                  onSwitchToRegister();
+                }}
+              >
+                Нет аккаунта?{" "}
+                <Box as="span" textDecoration="underline" color="#F2890F">
+                  Зарегистрируйтесь
+                </Box>
+              </Text>
+            </ModalFooter>
+          </ModalBody>
+        </form>
+      </ModalContent>
+    </Modal>
+  );
+};
+
+export default LoginModal;
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\components\QuestCard.tsx
+----
+"use client";
+
+import { Box, Text, Image, Flex } from "@chakra-ui/react";
+import { useRouter } from "next/navigation";
+
+interface QuestCardProps {
+  id: number;
+  title: string;
+  people: string;
+  level: string;
+  img: string; 
+}
+
+const QuestCard = ({ id, title, people, level, img }: QuestCardProps) => {
+  const router = useRouter();
+
+  return (
+    <Box
+      position="relative"
+      w="344px"
+      h="232px"
+      borderRadius="3px"
+      overflow="hidden"
+      cursor="pointer"
+      onClick={() => router.push(`/quests/${id}`)}
+    >
+
+      <Box
+        bgImage={`url(${img})`}
+        bgSize="cover"
+        bgPos="center"
+        w="100%"
+        h="100%"
+      />
+
+
+      <Flex
+        position="absolute"
+        bottom="0"
+        left="0"
+        w="100%"
+        p="15px"
+        flexDirection="column"
+        bgGradient="linear(to-t, rgba(0,0,0,0.8), transparent)"
+      >
+        <Text fontWeight="bold" fontSize="2xl" color="white">
+          {title}
+        </Text>
+
+        <Flex mt="10px" align="center" gap="10px" color="white">
+          <Flex align="center" gap="7px">
+            <Image src="/person.svg" alt="players" w="16px" h="16px" />
+            <Text>{people} чел</Text>
+          </Flex>
+
+          <Box w="1px" h="20px" bg="white" />
+
+          <Flex align="center" gap="7px">
+            <Image src="/puzzle.svg" alt="level" w="16px" h="16px" />
+            <Text>{level}</Text>
+          </Flex>
+        </Flex>
+      </Flex>
+    </Box>
+  );
+};
+
+export default QuestCard;
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\components\RegisterModal.tsx
+----
+"use client";
+
+import {
+  Box,
+  Text,
+  Button,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
+  ModalFooter,
+  Input,
+  FormControl,
+  FormLabel,
+  Checkbox,
+} from "@chakra-ui/react";
+import { useForm, type SubmitHandler } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRegister } from "@/app/api/AuthAPI";
+
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSwitchToLogin: () => void;
+}
+
+const formSchema = z.object({
+  name: z.string().min(2, { message: "Имя должно содержать минимум 2 символа" }),
+  surname: z.string().min(2, { message: "Фамилия должна содержать минимум 2 символа" }),
+  email: z.string().email({ message: "Введите корректный email" }),
+  phone: z
+    .string()
+    .regex(/^\+?\d{10,15}$/, { message: "Введите корректный номер телефона" }),
+  password: z.string().min(6, { message: "Пароль должен содержать минимум 6 символов" }),
+  agree: z.literal(true, { message: "Вы должны согласиться с условиями" }),
+});
+
+type FormData = z.output<typeof formSchema>;
+
+const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }: ModalProps) => {
+  const registerMutation = useRegister();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setError,
+  } = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+  });
+
+  const onSubmit: SubmitHandler<FormData> = (data) => {
+    registerMutation.mutate(data, {
+      onSuccess: () => {
+        alert("Вы успешно зарегистрированы!");
+        onClose();
+      },
+      onError: (error: any) => {
+        const message =
+          error?.message || "Произошла ошибка регистрации. Попробуйте ещё раз.";
+        if (message.toLowerCase().includes("email")) {
+          setError("email", { type: "server", message });
+        } else {
+          alert(message);
+        }
+      },
+    });
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} isCentered>
+      <ModalOverlay />
+      <ModalContent
+        bg="#1F1D1D"
+        w="480px"
+        maxW="500px"
+        borderRadius="none"
+        p="40px"
+        fontFamily="sans-serif"
+        overflowY="auto"
+      >
+        <ModalHeader
+          p="0"
+          mb="30px"
+          fontWeight="800"
+          fontSize="28px"
+          color="#FFFFFF"
+        >
+          Регистрация
+        </ModalHeader>
+        <ModalCloseButton
+          top="40px"
+          right="20px"
+          color="#888"
+          _hover={{ color: "#000" }}
+        />
+
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <ModalBody p="0">
+            {/* Имя */}
+            <FormControl mb="32px">
+              <FormLabel fontSize="15px" mb="10px" color="#FFFFFF">
+                Имя
+              </FormLabel>
+              <Input
+                {...register("name")}
+                placeholder="Имя"
+                borderRadius="0"
+                border="1px solid #ddd"
+                p="15px"
+                color="#FFFFFF"
+              />
+              {errors.name && (
+                <Text color="red.400" fontSize="sm" mt="5px">
+                  {errors.name.message}
+                </Text>
+              )}
+            </FormControl>
+
+            {/* Фамилия */}
+            <FormControl mb="32px">
+              <FormLabel fontSize="15px" mb="10px" color="#FFFFFF">
+                Фамилия
+              </FormLabel>
+              <Input
+                {...register("surname")}
+                placeholder="Фамилия"
+                borderRadius="0"
+                border="1px solid #ddd"
+                p="15px"
+                color="#FFFFFF"
+              />
+              {errors.surname && (
+                <Text color="red.400" fontSize="sm" mt="5px">
+                  {errors.surname.message}
+                </Text>
+              )}
+            </FormControl>
+
+            {/* Email */}
+            <FormControl mb="32px">
+              <FormLabel fontSize="15px" mb="10px" color="#FFFFFF">
+                Email
+              </FormLabel>
+              <Input
+                {...register("email")}
+                placeholder="Email"
+                borderRadius="0"
+                border="1px solid #ddd"
+                p="15px"
+                color="#FFFFFF"
+              />
+              {errors.email && (
+                <Text color="red.400" fontSize="sm" mt="5px">
+                  {errors.email.message}
+                </Text>
+              )}
+            </FormControl>
+
+            {/* Телефон */}
+            <FormControl mb="32px">
+              <FormLabel fontSize="15px" mb="10px" color="#FFFFFF">
+                Контактный телефон
+              </FormLabel>
+              <Input
+                {...register("phone")}
+                placeholder="Телефон"
+                type="tel"
+                borderRadius="0"
+                border="1px solid #ddd"
+                p="15px"
+                color="#FFFFFF"
+              />
+              {errors.phone && (
+                <Text color="red.400" fontSize="sm" mt="5px">
+                  {errors.phone.message}
+                </Text>
+              )}
+            </FormControl>
+
+            {/* Пароль */}
+            <FormControl mb="32px">
+              <FormLabel fontSize="15px" mb="10px" color="#FFFFFF">
+                Пароль
+              </FormLabel>
+              <Input
+                {...register("password")}
+                placeholder="Пароль"
+                type="password"
+                borderRadius="0"
+                border="1px solid #ddd"
+                p="15px"
+                color="#FFFFFF"
+              />
+              {errors.password && (
+                <Text color="red.400" fontSize="sm" mt="5px">
+                  {errors.password.message}
+                </Text>
+              )}
+            </FormControl>
+
+            {/* Кнопка регистрации */}
+            <ModalFooter p="0" display="flex" justifyContent="center" mb="28px">
+              <Button
+                type="submit"
+                bgColor="#F28A0F"
+                color="white"
+                _hover={{ bg: "#e07d0d" }}
+                maxW="219px"
+                w="100%"
+                fontSize="12px"
+                fontWeight="600"
+                textTransform="uppercase"
+                borderRadius="65px"
+                border="none"
+              >
+                Зарегистрироваться
+              </Button>
+            </ModalFooter>
+
+            {/* Переключение на логин */}
+            <Text
+              fontSize="12px"
+              color="#E5E5E5"
+              textAlign="center"
+              cursor="pointer"
+              mt="15px"
+              mb="20px"
+              onClick={() => {
+                onClose();
+                onSwitchToLogin();
+              }}
+            >
+              Уже есть аккаунт?{" "}
+              <Box as="span" textDecoration="underline" color="#F2890F">
+                Войти
+              </Box>
+            </Text>
+
+            {/* Чекбокс согласия */}
+            <Checkbox
+              {...register("agree")}
+              colorScheme="orange"
+              alignItems="flex-start"
+              sx={{
+                ".chakra-checkbox__control": {
+                  bg: "#F2890F",
+                  border: "none",
+                  borderRadius: "4px",
+                  _checked: { bg: "#C85C00", border: "none" },
+                  _hover: { bg: "#a64a00", border: "none" },
+                },
+              }}
+            >
+              <Text fontSize="12px" color="#E5E5E5" lineHeight="1.4">
+                Я согласен с{" "}
+                <Box as="span" textDecoration="underline">
+                  правилами обработки персональных данных
+                </Box>{" "}
+                и пользовательским соглашением
+              </Text>
+            </Checkbox>
+            {errors.agree && (
+              <Text color="red.400" fontSize="sm" mt="5px">
+                {errors.agree.message}
+              </Text>
+            )}
+          </ModalBody>
+        </form>
+      </ModalContent>
+    </Modal>
+  );
+};
+
+export default RegisterModal;
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\pages\ContactPage\ContactPage.tsx
+----
+"use client";
+
+import { Box, Text } from "@chakra-ui/react";
+import Image from "next/image";
+
+export default function ContactPage() {
+  return (
+    <Box
+      display="flex"
+      flexDirection="column"
+      alignItems="center"
+      mt="45px"
+      minH="74vh"
+      w="100%"
+    >
+      <Box display="flex" flexDirection="column" gap="8px" maxW="1082px" w="100%">
+        <Text color="#F2890F" fontWeight="500" fontSize="14px">
+          квесты в Днепре
+        </Text>
+        <Text fontWeight="800" fontSize="64px" mt="-15px">
+          Контакты
+        </Text>
+      </Box>
+
+      <Box
+        w="1080px"
+        h="0.5px"
+        bg="#E5E5E5"
+        border="0.5px"
+        opacity={0.25}
+        mt="20px"
+      />
+
+      <Box mt="40px" display="flex" w="1080px" justifyContent="space-between">
+
+        <Box display="flex" flexDirection="column" gap="30px" ml="20px">
+          <Box>
+            <Text fontWeight="700" fontSize="14px">
+              Адрес
+            </Text>
+            <Text fontWeight="300" fontSize="15px">
+              Днепр,
+            </Text>
+            <Text fontWeight="300" fontSize="15px">
+              Набережная реки Карповка, д 5П
+            </Text>
+          </Box>
+
+          <Box>
+            <Text fontWeight="700" fontSize="14px">
+              Режим работы
+            </Text>
+            <Text fontWeight="300" fontSize="15px">
+              Ежедневно, с 9:00 до 20:00
+            </Text>
+          </Box>
+
+          <Box>
+            <Text fontWeight="700" fontSize="14px">
+              Телефон
+            </Text>
+            <Text fontWeight="300" fontSize="15px">
+              8 (800) 333-55-99
+            </Text>
+          </Box>
+
+          <Box>
+            <Text fontWeight="700" fontSize="14px">
+              E-mail
+            </Text>
+            <Text fontWeight="300" fontSize="15px">
+              info@escape-room.com
+            </Text>
+          </Box>
+        </Box>
+
+        <Box
+          bgImage="url('/map.png')"
+          w="649px"
+          h="336px"
+          position="relative"
+          bgSize="cover"
+          bgPos="center"
+          borderRadius="8px"
+        >
+          <Image
+            src="/geometka.svg"
+            alt="Маркер на карте"
+            style={{ position: "absolute", left: "10px", top: "20px", }}
+            width = {50} 
+            height = {50}
+          />
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\pages\MainPage\MainPage.tsx
+----
+"use client";
+
+import { Box, Text, Button, Image, Flex, Divider } from "@chakra-ui/react";
+import QuestCard from "@/components/QuestCard";
+import { useState } from "react";
+import { useQuests, type Quest } from "@/app/api/QuestAPI";
+
+const MainPage = () => {
+  const [activeFilter, setActiveFilter] = useState<string>("все квесты");
+
+  const filters = [
+    { title: "Все квесты", value: "все квесты", img: "/all-quests.svg" },
+    { title: "Приключения", value: "приключения", img: "/advant.svg" },
+    { title: "Ужасы", value: "ужасы", img: "/horrible.svg" },
+    { title: "Мистика", value: "мистика", img: "/mistika.svg" },
+    { title: "Детектив", value: "детектив", img: "/detectiv.svg" },
+    { title: "Sci-fi", value: "sci-fi", img: "/scifi.svg" },
+  ];
+
+  const { data: quests, isLoading, error } = useQuests(activeFilter);
+
+  const handleCategoryClick = (category: string) => {
+    setActiveFilter(category);
+  };
+
+  if (isLoading) return <Text>Loading...</Text>;
+  if (error) return <Text>Error loading quest</Text>;
+
+  return (
+    <Flex direction="column" align="center">
+ 
+      <Box pt={3} maxW="1082px" w="100%">
+        <Text color="#F2890F" mb={2}>
+          квесты в Днепре
+        </Text>
+        <Text fontSize="5xl" fontWeight="extrabold">
+          Выберите тематику
+        </Text>
+      </Box>
+
+      <Flex wrap="wrap" justify="center" pt={20} gap={10}>
+        {filters.map((filter, index) => (
+          <Flex key={index} align="center" gap={10}>
+            <Button
+              leftIcon={<Image src={filter.img} alt={filter.title} boxSize="24px" />}
+              variant={activeFilter === filter.value ? "solid" : "ghost"}
+              colorScheme={activeFilter === filter.value ? "orange" : "gray"}
+              onClick={() => handleCategoryClick(filter.value)}
+            >
+              {filter.title}
+            </Button>
+
+            {index + 1 < filters.length && (
+              <Divider orientation="vertical" borderColor="whiteAlpha.500" h="40px" />
+            )}
+          </Flex>
+        ))}
+      </Flex>
+
+      <Flex justify="center" py={40}>
+        <Flex wrap="wrap" gap={6} maxW="1082px" w="100%" justify="center">
+          {quests?.map((quest) => (
+            <QuestCard
+              key={quest.id}
+              title={quest.title}
+              people={quest.players}
+              level={quest.level}
+              img={quest.image}
+              id={quest.id}
+            />
+          ))}
+        </Flex>
+      </Flex>
+    </Flex>
+  );
+};
+
+export default MainPage;
+
+----
+C:\Users\Diana\quest-room-front-next.js\src\pages\QuestPage\QuestPage.tsx
+----
+"use client";
+
+import {
+  Box,
+  Text,
+  Image,
+  Button,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
+  ModalFooter,
+  Input,
+  FormControl,
+  FormLabel,
+  Checkbox,
+  useDisclosure,
+  Flex,
+  Divider
+} from "@chakra-ui/react";
+import { useParams } from "next/navigation";
+import { useQuest } from "@/app/api/QuestAPI";
+import { useForm, type SubmitHandler } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+const formSchema = z.object({
+  name: z.string().min(2, { message: "Имя должно содержать минимум 2 символа" }),
+  phone: z
+    .string()
+    .regex(/^\+?\d{10,15}$/, { message: "Введите корректный номер телефона" }),
+  participants: z.number().min(2, { message: "Минимум 2 участникa" }),
+  agree: z.literal(true, { message: "Вы должны согласиться с условиями" })
+});
+
+type FormData = z.output<typeof formSchema>;
+
+interface QuestPageProps {
+  questId: string;
+}
+
+const QuestPage = ({ questId }: QuestPageProps) => {
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { data: quest, isLoading, error } = useQuest(Number(questId));
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors }
+  } = useForm<FormData>({
+    resolver: zodResolver(formSchema)
+  });
+
+  const onSubmit: SubmitHandler<FormData> = (data) => {
+    console.log("Данные для отправки:", data);
+    // Здесь добавь POST-запрос на бэкенд
+    onClose();
+  };
+
+  if (isLoading) return <Text>Loading...</Text>;
+  if (error) return <Text>Error loading quest</Text>;
+  if (!quest) return <Text>No quest found</Text>;
+
+  return (
+    <Box
+      bgImage={`url(${quest.image})`}
+      bgSize="cover"
+      bgPos="center"
+      minH="100vh"
+      w="100%"
+      position="relative"
+    >
+
+      <Flex
+        direction="column"
+        position="absolute"
+        left="50%"
+        top="50%"
+        transform="translate(-50%, -50%)"
+        maxW="520px"
+      >
+        <Text color="#F2890F" fontSize="14px">
+          {quest.category}
+        </Text>
+        <Text fontWeight="900" fontSize="92px" textTransform="uppercase">
+          {quest.title}
+        </Text>
+
+        <Flex gap="10px" mt={4}>
+          <Flex gap="7px" h="24px" align="center">
+            <Image src="/clock.svg" alt="Duration" boxSize="24px" />
+            <Text>{quest.duration} мин</Text>
+          </Flex>
+          <Divider orientation="vertical" borderColor="white" h="30px" />
+          <Flex gap="7px" h="24px" align="center">
+            <Image src="/person.svg" alt="Players" boxSize="24px" />
+            <Text>{quest.players} чел</Text>
+          </Flex>
+          <Divider orientation="vertical" borderColor="white" h="30px" />
+          <Flex gap="7px" h="24px" align="center">
+            <Image src="/puzzle.svg" alt="Level" boxSize="24px" />
+            <Text>{quest.level}</Text>
+          </Flex>
+        </Flex>
+
+        <Text fontWeight="500" fontSize="15px" my="30px">
+          {quest.description}
+        </Text>
+
+        <Button
+          onClick={onOpen}
+          bg="#F28A0F"
+          color="white"
+          borderRadius="65px"
+          w="250px"
+          h="65px"
+          fontWeight="800"
+          fontSize="17px"
+          textTransform="uppercase"
+        >
+          Забронировать
+        </Button>
+      </Flex>
+
+      {/* Модальное окно */}
+      <Modal isOpen={isOpen} onClose={onClose} isCentered>
+        <ModalOverlay />
+        <ModalContent
+          bg="#1F1D1D"
+          w="480px"
+          h="656px"
+          maxW="500px"
+          p="40px"
+          borderRadius="none"
+        >
+          <ModalHeader
+            p="0"
+            mb="30px"
+            fontWeight="800"
+            fontSize="28px"
+            color="white"
+          >
+            Оставить заявку
+          </ModalHeader>
+          <ModalCloseButton top="40px" right="20px" color="#888" _hover={{ color: "#000" }} />
+
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <ModalBody p="0">
+              <FormControl mb="32px">
+                <FormLabel fontSize="15px" mb="10px" color="white">
+                  Ваше Имя
+                </FormLabel>
+                <Input
+                  {...register("name")}
+                  placeholder="Имя"
+                  borderRadius="0"
+                  border="1px solid #ddd"
+                  p="15px"
+                  color="white"
+                />
+                {errors.name && (
+                  <Text color="red.400" fontSize="sm">
+                    {errors.name.message}
+                  </Text>
+                )}
+              </FormControl>
+
+              <FormControl mb="32px">
+                <FormLabel fontSize="15px" mb="10px" color="white">
+                  Контактный телефон
+                </FormLabel>
+                <Input
+                  {...register("phone")}
+                  placeholder="Телефон"
+                  type="tel"
+                  borderRadius="0"
+                  border="1px solid #ddd"
+                  p="15px"
+                  color="white"
+                />
+                {errors.phone && (
+                  <Text color="red.400" fontSize="sm">
+                    {errors.phone.message}
+                  </Text>
+                )}
+              </FormControl>
+
+              <FormControl mb="52px">
+                <FormLabel fontSize="15px" mb="10px" color="white">
+                  Количество участников
+                </FormLabel>
+                <Input
+                  {...register("participants", { valueAsNumber: true })}
+                  placeholder="Количество участников"
+                  type="number"
+                  borderRadius="0"
+                  border="1px solid #ddd"
+                  p="15px"
+                  color="white"
+                />
+                {errors.participants && (
+                  <Text color="red.400" fontSize="sm">
+                    {errors.participants.message}
+                  </Text>
+                )}
+              </FormControl>
+
+              <ModalFooter p="0" justifyContent="center" mb="28px">
+                <Button
+                  type="submit"
+                  bg="#F28A0F"
+                  color="white"
+                  _hover={{ bg: "#e07d0d" }}
+                  maxW="219px"
+                  w="100%"
+                  fontSize="12px"
+                  fontWeight="600"
+                  textTransform="uppercase"
+                  borderRadius="65px"
+                  border="none"
+                >
+                  Отправить заявку
+                </Button>
+              </ModalFooter>
+
+              <Checkbox
+                {...register("agree")}
+                colorScheme="orange"
+                alignItems="flex-start"
+                sx={{
+                  ".chakra-checkbox__control": {
+                    bg: "#F2890F",
+                    border: "none",
+                    borderRadius: "4px",
+                    _checked: {
+                      bg: "#C85C00",
+                      border: "none"
+                    },
+                    _hover: {
+                      bg: "#a64a00",
+                      border: "none"
+                    }
+                  }
+                }}
+              >
+                <Text fontSize="12px" color="#E5E5E5" lineHeight="1.4">
+                  Я согласен с{" "}
+                  <Box as="span" textDecoration="underline">
+                    правилами обработки персональных данных
+                  </Box>{" "}
+                  и пользовательским соглашением
+                </Text>
+              </Checkbox>
+              {errors.agree && (
+                <Text color="red.400" fontSize="sm">
+                  {errors.agree.message}
+                </Text>
+              )}
+            </ModalBody>
+          </form>
+        </ModalContent>
+      </Modal>
+    </Box>
+  );
+};
+
+export default QuestPage;
+
+----
+C:\Users\Diana\quest-room-front-next.js\tailwind.config.ts
+----
+import type { Config } from "tailwindcss";
+
+export default {
+  content: [
+    "./src/**/*.{js,ts,jsx,tsx}",
+    "./components/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        brand: "#F2890F",
+      },
+    },
+  },
+  plugins: [],
+} satisfies Config;
+
+----
+C:\Users\Diana\quest-room-front-next.js\tsconfig.json
+----
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+
